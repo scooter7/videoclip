@@ -41,9 +41,7 @@ def transcribe_video(video_path, model_name="tiny"):  # Using "tiny" model for f
     st.write("Transcription completed.")
     return transcription
 
-# Step 2: Get relevant segments from transcript based on user query
 import json
-import re
 
 def get_relevant_segments(transcript, user_query):
     groq_key = st.secrets["groq_key"]  # Get the API key from Streamlit secrets
@@ -98,22 +96,23 @@ def get_relevant_segments(transcript, user_query):
         raw_response = response.json()["choices"][0]["message"]["content"]
         st.write("Raw content before cleaning:", raw_response)
 
-        # Extract the JSON part using regex (this searches for the first occurrence of a JSON block)
-        json_match = re.search(r'\{(?:[^{}]|(?R))*\}', raw_response)
-        if json_match:
-            json_str = json_match.group()
-            st.write("Extracted JSON:", json_str)
+        # Find the start of the JSON content in the response
+        json_start = raw_response.find('{')
+        if json_start == -1:
+            st.error("No JSON found in the API response.")
+            return []
 
-            # Now try to parse the extracted JSON
-            try:
-                conversations_data = json.loads(json_str)
-                conversations = conversations_data.get("conversations", [])
-                st.write("Parsed conversations:", conversations)
-            except json.JSONDecodeError:
-                st.error("Failed to decode extracted JSON content.")
-                return []
-        else:
-            st.error("No valid JSON found in the API response.")
+        # Extract everything from the start of the JSON to the end of the response
+        json_str = raw_response[json_start:]
+        st.write("Extracted JSON string:", json_str)
+
+        # Parse the JSON string
+        try:
+            conversations_data = json.loads(json_str)
+            conversations = conversations_data.get("conversations", [])
+            st.write("Parsed conversations:", conversations)
+        except json.JSONDecodeError:
+            st.error("Failed to decode extracted JSON content.")
             return []
     except requests.Timeout:
         st.error("API request timed out. Please try again later.")
