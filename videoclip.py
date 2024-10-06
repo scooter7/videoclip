@@ -7,11 +7,29 @@ import ast
 import streamlit as st
 
 # Step 1: Transcribe the Video
-def transcribe_video(video_path, model_name="base"):
+def transcribe_video(video_path, model_name="tiny"):  # Using "tiny" model for faster processing
     model = whisper.load_model(model_name)
     audio_path = "temp_audio.wav"
-    os.system(f"ffmpeg -i {video_path} -ar 16000 -ac 1 -b:a 64k -f mp3 {audio_path}")
+    
+    # Add logging to track the progress of ffmpeg
+    st.write("Extracting audio from video using ffmpeg...")
+    result = os.system(f"ffmpeg -i {video_path} -ar 16000 -ac 1 -b:a 64k -f mp3 {audio_path}")
+    
+    # Check if ffmpeg command failed
+    if result != 0:
+        st.error("Failed to extract audio using ffmpeg.")
+        return None
+    
+    # Check if audio file is created
+    if not os.path.exists(audio_path):
+        st.error("Audio extraction failed, no audio file created.")
+        return None
+    
+    st.write("Audio extracted. Now transcribing...")
+
+    # Whisper transcription process
     result = model.transcribe(audio_path)
+    
     transcription = []
     for segment in result['segments']:
         transcription.append({
@@ -19,6 +37,8 @@ def transcribe_video(video_path, model_name="base"):
             'end': segment['end'],
             'text': segment['text'].strip()
         })
+    
+    st.write("Transcription completed.")
     return transcription
 
 # Step 2: Get relevant segments from transcript based on user query
@@ -113,6 +133,10 @@ def main():
     video_file = st.file_uploader("Upload a video file", type=["mp4", "mov", "avi"])
     
     if video_file:
+        # Check the file size before proceeding
+        if video_file.size > 50 * 1024 * 1024:  # Example: 50MB limit
+            st.warning("The video file is large, and transcription may take longer than expected.")
+        
         # Save uploaded file to a temporary location
         video_path = "uploaded_video.mp4"
         with open(video_path, "wb") as f:
@@ -124,21 +148,27 @@ def main():
         if st.button("Transcribe and Edit Video"):
             # Transcribe the video
             st.write("Transcribing video...")
-            transcription = transcribe_video(video_path, model_name="base")
+            transcription = transcribe_video(video_path, model_name="tiny")  # Using "tiny" model for faster processing
             
-            # Get relevant segments based on user query
-            st.write("Finding relevant segments...")
-            relevant_segments = get_relevant_segments(transcription, user_query)
+            if transcription is not None:
+                # Get relevant segments based on user query
+                st.write("Finding relevant segments...")
+                relevant_segments = get_relevant_segments(transcription, user_query)
+                
+                if relevant_segments:
+                    # Edit video based on relevant segments
+                    output_video_path = "edited_video.mp4"
+                    st.write("Editing video...")
+                    edit_video(video_path, relevant_segments, output_video_path)
+                    
+                    # Provide download link for the edited video
+                    st.video(output_video_path)
+                    with open(output_video_path, "rb") as file:
+                        st.download_button(label="Download Edited Video", data=file, file_name="edited_output.mp4")
+                else:
+                    st.error("No relevant segments found based on the query.")
+            else:
+                st.error("Transcription failed. Please try again.")
             
-            # Edit video based on relevant segments
-            output_video_path = "edited_video.mp4"
-            st.write("Editing video...")
-            edit_video(video_path, relevant_segments, output_video_path)
-            
-            # Provide download link for the edited video
-            st.video(output_video_path)
-            with open(output_video_path, "rb") as file:
-                st.download_button(label="Download Edited Video", data=file, file_name="edited_output.mp4")
-
 if __name__ == "__main__":
     main()
