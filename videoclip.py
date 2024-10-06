@@ -43,6 +43,7 @@ def transcribe_video(video_path, model_name="tiny"):  # Using "tiny" model for f
 
 # Step 2: Get relevant segments from transcript based on user query
 import json
+import re
 
 def get_relevant_segments(transcript, user_query):
     groq_key = st.secrets["groq_key"]  # Get the API key from Streamlit secrets
@@ -94,22 +95,25 @@ def get_relevant_segments(transcript, user_query):
         response.raise_for_status()  # Raise an error if the request failed
 
         st.write("API response received.")
-        st.write("API raw response content:", response.content)
-
-        # Fixing escaped characters in the response
         raw_response = response.json()["choices"][0]["message"]["content"]
         st.write("Raw content before cleaning:", raw_response)
 
-        # Clean the response content
-        cleaned_content = raw_response.replace('\\"', '"').replace("\\n", "\n")
-        st.write("Cleaned content:", cleaned_content)
+        # Extract the JSON part using regex (this searches for the first occurrence of a JSON block)
+        json_match = re.search(r'\{(?:[^{}]|(?R))*\}', raw_response)
+        if json_match:
+            json_str = json_match.group()
+            st.write("Extracted JSON:", json_str)
 
-        # Now try to parse it as JSON
-        try:
-            conversations_data = json.loads(cleaned_content)
-            conversations = conversations_data.get("conversations", [])
-        except json.JSONDecodeError:
-            st.error("Failed to decode cleaned response content as JSON.")
+            # Now try to parse the extracted JSON
+            try:
+                conversations_data = json.loads(json_str)
+                conversations = conversations_data.get("conversations", [])
+                st.write("Parsed conversations:", conversations)
+            except json.JSONDecodeError:
+                st.error("Failed to decode extracted JSON content.")
+                return []
+        else:
+            st.error("No valid JSON found in the API response.")
             return []
     except requests.Timeout:
         st.error("API request timed out. Please try again later.")
