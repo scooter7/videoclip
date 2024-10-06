@@ -98,12 +98,13 @@ def get_relevant_segments(transcript, user_query):
 
         # Find the start of the JSON content in the response
         json_start = raw_response.find('{')
-        if json_start == -1:
+        json_end = raw_response.rfind('}') + 1
+        if json_start == -1 or json_end == -1:
             st.error("No JSON found in the API response.")
             return []
 
-        # Extract everything from the start of the JSON to the end of the response
-        json_str = raw_response[json_start:]
+        # Extract only the JSON part from the raw response
+        json_str = raw_response[json_start:json_end]
         st.write("Extracted JSON string:", json_str)
 
         # Parse the JSON string
