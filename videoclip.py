@@ -127,19 +127,34 @@ def get_relevant_segments(transcript, user_query):
 # Step 3: Edit the video based on relevant segments
 from moviepy.editor import VideoFileClip, concatenate_videoclips
 
-def edit_video(original_video_path, segments, output_video_path, fade_duration=0.5):
-    video = VideoFileClip(original_video_path)
-    clips = []
-    for seg in segments:
-        start = float(seg['start'])  # Convert start time to float
-        end = float(seg['end'])  # Convert end time to float
-        clip = video.subclip(start, end).fadein(fade_duration).fadeout(fade_duration)
-        clips.append(clip)
-    if clips:
-        final_clip = concatenate_videoclips(clips, method="compose")
-        final_clip.write_videofile(output_video_path, codec="libx264", audio_codec="aac")
-    else:
-        st.write("No segments to include in the edited video.")
+def edit_video(original_video_path, segments, output_video_path, fade_duration=0.5, default_fps=24):
+    try:
+        video = VideoFileClip(original_video_path)
+        clips = []
+        for seg in segments:
+            start = float(seg['start'])  # Convert start time to float
+            end = float(seg['end'])  # Convert end time to float
+            if start < 0 or end > video.duration:
+                st.write(f"Invalid segment start ({start}) or end ({end}) time. Skipping this segment.")
+                continue
+            clip = video.subclip(start, end).fadein(fade_duration).fadeout(fade_duration)
+            clips.append(clip)
+        
+        if clips:
+            final_clip = concatenate_videoclips(clips, method="compose")
+            
+            # Set FPS to avoid NoneType error
+            if video.fps is None:
+                fps = default_fps
+            else:
+                fps = video.fps
+            
+            final_clip.write_videofile(output_video_path, codec="libx264", audio_codec="aac", fps=fps)
+        else:
+            st.write("No valid segments to include in the edited video.")
+    
+    except Exception as e:
+        st.error(f"An error occurred during video editing: {e}")
 
 # Streamlit App Interface
 def main():
