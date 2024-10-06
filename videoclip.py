@@ -125,12 +125,14 @@ def get_relevant_segments(transcript, user_query):
     return conversations
 
 # Step 3: Edit the video based on relevant segments
+from moviepy.editor import VideoFileClip, concatenate_videoclips
+
 def edit_video(original_video_path, segments, output_video_path, fade_duration=0.5):
     video = VideoFileClip(original_video_path)
     clips = []
     for seg in segments:
-        start = seg['start']
-        end = seg['end']
+        start = float(seg['start'])  # Convert start time to float
+        end = float(seg['end'])  # Convert end time to float
         clip = video.subclip(start, end).fadein(fade_duration).fadeout(fade_duration)
         clips.append(clip)
     if clips:
