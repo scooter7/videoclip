@@ -63,9 +63,31 @@ def get_relevant_segments(transcript, user_query):
         "stream": False,
         "stop": None
     }
-    response = requests.post(url, headers=headers, json=data)
-    data = response.json()["choices"][0]["message"]["content"]
-    conversations = ast.literal_eval(data)["conversations"]
+
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        response.raise_for_status()  # Raise an error if the request failed
+
+        response_data = response.json()
+        
+        # Check if the response contains the expected content
+        if "choices" in response_data and response_data["choices"]:
+            message_content = response_data["choices"][0]["message"]["content"]
+            
+            # Safely parse the content as JSON if it's valid
+            try:
+                conversations_data = json.loads(message_content)
+                conversations = conversations_data.get("conversations", [])
+            except json.JSONDecodeError:
+                st.error("Failed to decode response content as JSON.")
+                return []
+        else:
+            st.error("No valid response from the API.")
+            return []
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error while calling the API: {e}")
+        return []
+
     return conversations
 
 # Step 3: Edit the video based on relevant segments
