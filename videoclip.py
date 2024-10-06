@@ -88,11 +88,12 @@ def get_relevant_segments(transcript, user_query):
         response = requests.post(url, headers=headers, json=data)
         response.raise_for_status()  # Raise an error if the request failed
 
-        response_data = response.json()
-        
+        # Log the raw response to help debug
+        st.write("API raw response content:", response.content)
+
         # Check if the response contains the expected content
-        if "choices" in response_data and response_data["choices"]:
-            message_content = response_data["choices"][0]["message"]["content"]
+        if "choices" in response.json() and response.json()["choices"]:
+            message_content = response.json()["choices"][0]["message"]["content"]
             
             # Safely parse the content as JSON if it's valid
             try:
