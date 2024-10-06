@@ -44,7 +44,7 @@ def transcribe_video(video_path, model_name="tiny"):  # Using "tiny" model for f
 # Step 2: Get relevant segments from transcript based on user query
 def get_relevant_segments(transcript, user_query):
     groq_key = st.secrets["groq_key"]  # Get the API key from Streamlit secrets
-    
+
     prompt = f"""You are an expert video editor who can read video transcripts and perform video editing. Given a transcript with segments, your task is to identify all the conversations related to a user query. Follow these guidelines when choosing conversations. A group of continuous segments in the transcript is a conversation.
 
     Guidelines:
@@ -85,13 +85,20 @@ def get_relevant_segments(transcript, user_query):
     }
 
     try:
-        response = requests.post(url, headers=headers, json=data)
+        # Log that we are making the API request
+        st.write("Making API request to extract relevant segments...")
+        
+        # Set a timeout for the API request (e.g., 30 seconds)
+        response = requests.post(url, headers=headers, json=data, timeout=30)
         response.raise_for_status()  # Raise an error if the request failed
 
-        # Log the raw response to help debug
+        # Log that we received a response
+        st.write("API response received.")
+
+        # Log the raw response for debugging
         st.write("API raw response content:", response.content)
 
-        # Check if the response contains the expected content
+        # Parse the JSON response if valid
         if "choices" in response.json() and response.json()["choices"]:
             message_content = response.json()["choices"][0]["message"]["content"]
             
@@ -105,6 +112,9 @@ def get_relevant_segments(transcript, user_query):
         else:
             st.error("No valid response from the API.")
             return []
+    except requests.Timeout:
+        st.error("API request timed out. Please try again later.")
+        return []
     except requests.exceptions.RequestException as e:
         st.error(f"Error while calling the API: {e}")
         return []
