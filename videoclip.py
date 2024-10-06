@@ -96,18 +96,18 @@ def get_relevant_segments(transcript, user_query):
         raw_response = response.json()["choices"][0]["message"]["content"]
         st.write("Raw content before cleaning:", raw_response)
 
-        # Find the start of the JSON content in the response
-        json_start = raw_response.find('{')
+        # Extract only the valid JSON part from the response using simple string matching
+        json_start = raw_response.find('{"conversations":')
         json_end = raw_response.rfind('}') + 1
         if json_start == -1 or json_end == -1:
             st.error("No JSON found in the API response.")
             return []
 
-        # Extract only the JSON part from the raw response
+        # Extract the JSON part of the response
         json_str = raw_response[json_start:json_end]
         st.write("Extracted JSON string:", json_str)
 
-        # Parse the JSON string
+        # Parse the extracted JSON string
         try:
             conversations_data = json.loads(json_str)
             conversations = conversations_data.get("conversations", [])
