@@ -42,6 +42,7 @@ def transcribe_video(video_path, model_name="tiny"):  # Using "tiny" model for f
     return transcription
 
 import json
+import re
 
 def get_relevant_segments(transcript, user_query):
     groq_key = st.secrets["groq_key"]  # Get the API key from Streamlit secrets
@@ -96,24 +97,22 @@ def get_relevant_segments(transcript, user_query):
         raw_response = response.json()["choices"][0]["message"]["content"]
         st.write("Raw content before cleaning:", raw_response)
 
-        # Extract only the valid JSON part from the response using simple string matching
-        json_start = raw_response.find('{"conversations":')
-        json_end = raw_response.rfind('}') + 1
-        if json_start == -1 or json_end == -1:
-            st.error("No JSON found in the API response.")
-            return []
+        # Use regex to extract the first valid JSON block from the response
+        json_match = re.search(r'\{(?:[^{}]|(?R))*\}', raw_response)
+        if json_match:
+            json_str = json_match.group()
+            st.write("Extracted JSON string:", json_str)
 
-        # Extract the JSON part of the response
-        json_str = raw_response[json_start:json_end]
-        st.write("Extracted JSON string:", json_str)
-
-        # Parse the extracted JSON string
-        try:
-            conversations_data = json.loads(json_str)
-            conversations = conversations_data.get("conversations", [])
-            st.write("Parsed conversations:", conversations)
-        except json.JSONDecodeError:
-            st.error("Failed to decode extracted JSON content.")
+            # Parse the extracted JSON string
+            try:
+                conversations_data = json.loads(json_str)
+                conversations = conversations_data.get("conversations", [])
+                st.write("Parsed conversations:", conversations)
+            except json.JSONDecodeError:
+                st.error("Failed to decode extracted JSON content.")
+                return []
+        else:
+            st.error("No valid JSON found in the API response.")
             return []
     except requests.Timeout:
         st.error("API request timed out. Please try again later.")
