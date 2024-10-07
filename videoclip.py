@@ -92,9 +92,8 @@ def get_relevant_segments(transcript, user_query):
     raw_response = response.text
     st.write("Raw content before cleaning:", raw_response)
 
-    # Clean up the response to extract valid JSON
+    # Use a focused regex to extract the JSON part starting from "conversations"
     try:
-        # Extract the JSON content from the raw response by targeting the 'conversations' object
         json_match = re.search(r'\"conversations\":\s*\[.*\]', raw_response, re.DOTALL)
         if json_match:
             json_str = '{' + json_match.group() + '}'
@@ -104,10 +103,10 @@ def get_relevant_segments(transcript, user_query):
             conversations = json.loads(json_str)["conversations"]
             return conversations
         else:
-            st.error("No JSON found in the API response.")
+            st.error("No valid JSON content found in the API response.")
             return None
     except Exception as e:
-        st.error(f"Failed to decode extracted JSON content: {e}")
+        st.error(f"Error while decoding JSON content: {e}")
         return None
 
 # Step 3: Edit the video based on relevant segments
