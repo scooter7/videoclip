@@ -94,7 +94,8 @@ def get_relevant_segments(transcript, user_query):
 
     # Clean up the response to extract valid JSON
     try:
-        json_match = re.search(r'\{.*\}', raw_response)  # Find the first JSON object
+        # Extract the JSON content from the raw response by targeting the 'conversations' object
+        json_match = re.search(r'\{\s*"conversations":\s*\[.*\]\s*\}', raw_response, re.DOTALL)
         if json_match:
             json_str = json_match.group()
             st.write("Extracted JSON string:", json_str)
